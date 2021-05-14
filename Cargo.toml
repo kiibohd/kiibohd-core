@@ -14,6 +14,7 @@ name = "kiibohd_core"
 default = [
   "kiibohd-hall-effect",
   "kiibohd-hid-io",
+  "kiibohd-keyscanning",
 ]
 
 # The std option is used for cargo test only
@@ -27,6 +28,7 @@ lib = []
 members = [
   "kiibohd-hall-effect",
   "kiibohd-hid-io",
+  "kiibohd-keyscanning",
 ]
 
 
@@ -36,5 +38,6 @@ cstr_core           = { version = "^0.2", default-features = false }
 heapless            = { version = "^0.6" }
 kiibohd-hid-io      = { path = "kiibohd-hid-io", optional = true }
 kiibohd-hall-effect = { path = "kiibohd-hall-effect", optional = true }
+kiibohd-keyscanning = { path = "kiibohd-keyscanning", optional = true }
 pkg-version         = { version = "^1.0" }
 typenum             = { version = "^1.12", features = ["no_std"] }

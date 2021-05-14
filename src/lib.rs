@@ -14,6 +14,7 @@
 
 pub mod he;
 pub mod hidio;
+pub mod keyscanning;
 
 // ----- Embedded Functionality -----
 
