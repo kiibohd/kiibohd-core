@@ -1,9 +1,11 @@
 #![no_main]
 #![no_std]
+#[allow(unused_imports)]
 
 use core::convert::Infallible;
 use panic_halt as _;
 
+#[derive(PartialEq)]
 pub enum State {
     Pressed,
     Released
@@ -17,9 +19,9 @@ pub struct KeyState {
 
 impl KeyState {
 
-    pub fn new(state: State) -> KeyState {
+    pub fn new() -> KeyState {
         KeyState {
-            state: State,
+            state: State::Released,
             prev_state: State::Released,
             pressed_dur: 0,
         }
@@ -31,12 +33,12 @@ impl KeyState {
     
     pub fn set_state(&self, state: State) -> bool {
         self.prev_state = self.state;
-        self.state = State;
-        if self.prev_state.get_state() == self.state.get_state() {
-            self.pressed_dur++;
-            false
+        self.state = state;
+        if self.prev_state == self.state {
+            self.pressed_dur = self.pressed_dur + 1;
+            return false;
         } else {
-            true
+            return true;
         }
     }
 }
