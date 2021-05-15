@@ -21,13 +21,14 @@ pub struct Scan {
 impl Scan {
 
     pub fn new(self, rows: ([&'static InputPin<Error = Infallible>; 7], i32), cols: ([&'static OutputPin<Error = Infallible>; 20], i32)) -> Scan {
-        self.rows = rows.0;
-        self.rowcnt = rows.1;
-        self.cols = cols.0;
-        self.colcnt = cols.1;
-        self.colflr = 0;
-        self.colceil = cols.1;
-        return self;
+        Scan {
+            rows: rows.0;
+            rowcnt: rows.1;
+            cols: cols.0;
+            colcnt: cols.1;
+            colflr: 0;
+            colceil: cols.1;
+        }
     }
 
     pub fn matrix_change(&self, flr: i32, ceil: i32) {
