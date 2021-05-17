@@ -1,5 +1,3 @@
-#![no_main]
-#![no_std]
 #[allow(unused_imports)]
 
 pub mod state;
@@ -18,12 +16,17 @@ impl StateMatrix {
 
     pub fn new() -> StateMatrix {
         StateMatrix {
-            keys: [[KeyState::new(); 7]; 20],
+            keys: [[KeyState::new(10 as i32); 7]; 20],
         }
     }
 
-    pub fn set_state(&self, r: usize, c: usize, state: State) -> bool {
-        KeyState::set_state(&self.keys[r][c], state)
+    pub fn poll_update(&mut self, r: usize, c: usize, high: bool) -> bool {
+        let change = KeyState::poll_update(&mut self.keys[r][c], high);
+        false
+    }
+
+    pub fn get_state(&self, r: usize, c: usize) -> State {
+        KeyState::get_state(&self.keys[r][c])
     }
 
 }

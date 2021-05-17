@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 #[allow(unused_imports)]
+#[allow(unused_attributes)]
 
 mod matrix;
 pub use self::matrix::StateMatrix;
@@ -12,18 +13,18 @@ use panic_halt as _;
 use embedded_hal::{prelude::*, digital::v2::*};
 
 pub struct Scan {
-    rows: [&'static dyn InputPin<Error = Infallible>; 7],
-    cols: [&'static dyn OutputPin<Error = Infallible>; 20],
-    colcnt: i32,
-    rowcnt: i32,
-    colflr: i32,
-    colceil: i32,
+    rows: [&'static mut dyn InputPin<Error = Infallible>; 7],
+    cols: [&'static mut dyn OutputPin<Error = Infallible>; 20],
+    colcnt: usize,
+    rowcnt: usize,
+    colflr: usize,
+    colceil: usize,
     matrix: StateMatrix,
 }
 
 impl Scan {
 
-    pub fn new(self, rows: ([&'static dyn InputPin<Error = Infallible>; 7], i32), cols: ([&'static dyn OutputPin<Error = Infallible>; 20], i32)) -> Scan {
+    pub fn new(self, rows: ([&'static mut dyn InputPin<Error = Infallible>; 7], usize), cols: ([&'static mut dyn OutputPin<Error = Infallible>; 20], usize)) -> Scan {
         Scan {
             rows: rows.0,
             rowcnt: rows.1,
@@ -35,24 +36,31 @@ impl Scan {
         }
     }
 
-    pub fn matrix_change(&self, flr: i32, ceil: i32) {
+    pub fn scan_change(&mut self, flr: usize, ceil: usize) {
         self.colflr = flr;
         self.colceil = ceil;
     }
 
-    pub fn single_scan(&self) {
-        for (c, col) in self.cols.iter().enumerate() {
-            if (c as i32) >= self.colflr && (c as i32) < self.colceil  {
-                OutputPin::set_high(&mut col);
-                for (r, row) in self.rows.iter().enumerate() {
-                    match InputPin::is_high(row).unwrap() {
+    pub fn single_scan(&mut self) {
+        let mut i = 0;
+        let mut j = 0;
+        while i <= self.colcnt  {
+            if i >= self.colflr && i < self.colceil  {
+                OutputPin::set_high(self.cols[i]);
+                while j <= 7 {
+                    match InputPin::is_high(self.rows[j]).unwrap() {
                         true => {
-                            StateMatrix::set_state(&self.matrix, r, c, State::Pressed);
+                            StateMatrix::poll_update(&mut self.matrix, j, i, true);
+                        }
+                        false => {
+                            StateMatrix::poll_update(&mut self.matrix, j, i, false);
                         }
                     }
+                    j = j + 1;
                 }
-                OutputPin::set_low(&mut col);
+                OutputPin::set_low(self.cols[i]);
             }
+            i = i + 1;
         }
         // TODO
         //send scan end event
