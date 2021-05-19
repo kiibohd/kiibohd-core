@@ -1,38 +1,34 @@
-#![no_main]
 #![no_std]
 #[allow(unused_imports)]
 #[allow(unused_attributes)]
+/// This crate is to handle scanning and strobing of the key matrix.
+/// It also handles the debouncing of key input to ensure acurate keypresses are being read.
+/// InputPin's, and OutputPin's are passed in through the "rows" and "cols" parameters in the Scan::new() function.
+/// The maximum number of rows is 7, and the maximum number of columns is 20. This number may need adjusted through testing.
 
-mod matrix;
-pub use self::matrix::StateMatrix;
+pub mod matrix;
 pub use self::matrix::state::State;
+pub use self::matrix::{Matrix, StateMatrix, RowArray, ColArray};
 
 use core::convert::Infallible;
 use panic_halt as _;
-#[allow(unused_imports)]
 use embedded_hal::{prelude::*, digital::v2::*};
+use embedded_time::{duration::*, rate::*};
 
+/// Scan structure to handle matrix strobing and sensing
 pub struct Scan {
-    rows: [&'static mut dyn InputPin<Error = Infallible>; 7],
-    cols: [&'static mut dyn OutputPin<Error = Infallible>; 20],
-    colcnt: usize,
-    rowcnt: usize,
     colflr: usize,
     colceil: usize,
-    matrix: StateMatrix,
+    matrix: Matrix,
 }
 
 impl Scan {
 
-    pub fn new(self, rows: ([&'static mut dyn InputPin<Error = Infallible>; 7], usize), cols: ([&'static mut dyn OutputPin<Error = Infallible>; 20], usize)) -> Scan {
+    pub fn new(self, rows: RowArray, cols: ColArray, scan_period: Microseconds) -> Scan {
         Scan {
-            rows: rows.0,
-            rowcnt: rows.1,
-            cols: cols.0,
-            colcnt: cols.1,
             colflr: 0,
-            colceil: cols.1,
-            matrix: StateMatrix::new()
+            colceil: cols.colcnt,
+            matrix: Matrix::new(rows, cols, scan_period)
         }
     }
 
@@ -44,21 +40,21 @@ impl Scan {
     pub fn single_scan(&mut self) {
         let mut i = 0;
         let mut j = 0;
-        while i <= self.colcnt  {
+        while i <= self.matrix.colarray.colcnt  {
             if i >= self.colflr && i < self.colceil  {
-                OutputPin::set_high(self.cols[i]);
+                let _highret = OutputPin::set_high(self.matrix.colarray.cols[i]);
                 while j <= 7 {
-                    match InputPin::is_high(self.rows[j]).unwrap() {
+                    match InputPin::is_high(self.matrix.rowarray.rows[j]).unwrap() {
                         true => {
-                            StateMatrix::poll_update(&mut self.matrix, j, i, true);
+                            StateMatrix::poll_update(&mut self.matrix.state_matrix, j, i, true);
                         }
                         false => {
-                            StateMatrix::poll_update(&mut self.matrix, j, i, false);
+                            StateMatrix::poll_update(&mut self.matrix.state_matrix, j, i, false);
                         }
                     }
                     j = j + 1;
                 }
-                OutputPin::set_low(self.cols[i]);
+                let _lowret = OutputPin::set_low(self.matrix.colarray.cols[i]);
             }
             i = i + 1;
         }
