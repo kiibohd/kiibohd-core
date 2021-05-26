@@ -8,27 +8,23 @@
 
 pub mod matrix;
 pub use self::matrix::state::State;
-pub use self::matrix::{Matrix, StateMatrix, RowArray, ColArray};
+pub use self::matrix::{Matrix, StateMatrix};
+
 
 use core::convert::Infallible;
-use panic_halt as _;
-use embedded_hal::{prelude::*, digital::v2::*};
+use atsam4_hal::{prelude::*, gpio::*};
 use embedded_time::{duration::*, rate::*};
-
+/*
 /// Scan structure to handle matrix strobing and sensing
 pub struct Scan {
-    colflr: usize,
-    colceil: usize,
-    matrix: Matrix,
+    matrix: Matrix<(), ()>,
 }
 
 impl Scan {
 
-    pub fn new(self, rows: RowArray, cols: ColArray, scan_period: Microseconds) -> Scan {
+    pub fn new(matrix: Matrix<(), ()>) -> Scan {
         Scan {
-            colflr: 0,
-            colceil: cols.colcnt,
-            matrix: Matrix::new(rows, cols, scan_period)
+            matrix: matrix
         }
     }
 
@@ -37,14 +33,14 @@ impl Scan {
         self.colceil = ceil;
     }
 
-    pub fn single_scan(&mut self) {
+    /*pub fn single_scan(&mut self) {
         let mut i = 0;
         let mut j = 0;
         while i <= self.matrix.colarray.colcnt  {
             if i >= self.colflr && i < self.colceil  {
-                let _highret = OutputPin::set_high(self.matrix.colarray.cols[i]);
+                let _highret = self.matrix.colarray.cols[i].set_high().ok();
                 while j <= 7 {
-                    match InputPin::is_high(self.matrix.rowarray.rows[j]).unwrap() {
+                    match self.matrix.rowarray.rows[j].is_high().ok().unwrap() {
                         true => {
                             StateMatrix::poll_update(&mut self.matrix.state_matrix, j, i, true);
                         }
@@ -54,11 +50,15 @@ impl Scan {
                     }
                     j = j + 1;
                 }
-                let _lowret = OutputPin::set_low(self.matrix.colarray.cols[i]);
+                let _lowret = self.matrix.colarray.cols[i].set_low().ok();
             }
             i = i + 1;
         }
         // TODO
         //send scan end event
+    }*/
+
+    pub fn single_scan(&mut self) {
+        self.matrix.get()
     }
-}
+}*/

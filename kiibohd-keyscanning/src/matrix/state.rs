@@ -1,7 +1,6 @@
 #[allow(unused_imports)]
 
 use core::convert::Infallible;
-use panic_halt as _;
 use embedded_time::{duration::*, rate::*};
 
 #[derive(PartialEq, Copy, Clone)]

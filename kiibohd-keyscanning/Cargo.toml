@@ -8,14 +8,18 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-atsam4-hal      = { version = "0.1.13"}
 rtcc            = { version = "^0.1.0" }
-keyberon        = { version = "^0.1.0" }
 cortex-m        = "0.6"
 cortex-m-rt     = { version = "0.6.6", features = ["device"] }
-panic-halt      = "0.2.0"
 cortex-m-rtic   = "0.6.0-alpha.2"
 generic-array   = "0.14.4"
 embedded-hal    = "0.2.5"
-atsam4e16e-pac  = "0.1.8"
-embedded-time   = "0.11.0"
+embedded-time   = "0.10.1"
+keyberon        = "0.1.1"
+heapless        = "0.5"
+
+[dependencies.atsam4-hal]
+path = "../../atsam4-hal"
+version = "~0.1.14"
+default-features = false
+features = ["atsam4s8b"]
