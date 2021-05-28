@@ -54,6 +54,9 @@ dkms.conf
 ## Rust specific ##
 # Compiled files
 /target/
+kiibohd-keyscanning/target/
+kiibohd-hid-io/target/
+kiibohd-hall-effect/target/
 
 # Remove Cargo.lock only for executable targets
 Cargo.lock

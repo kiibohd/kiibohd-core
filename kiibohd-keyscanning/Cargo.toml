@@ -19,7 +19,8 @@ keyberon        = "0.1.1"
 heapless        = "0.5"
 
 [dependencies.atsam4-hal]
-path = "../../atsam4-hal"
+git = "https:github.com/atsam-rs/atsam4-hal.git"
+#path = "../../atsam4-hal"
 version = "~0.1.14"
 default-features = false
 features = ["atsam4s8b"]

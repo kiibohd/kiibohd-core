@@ -7,13 +7,10 @@
 /// The maximum number of rows is 7, and the maximum number of columns is 20. This number may need adjusted through testing.
 
 pub mod matrix;
-pub use self::matrix::state::State;
-pub use self::matrix::{Matrix, StateMatrix};
+//pub use self::matrix::state::State;
+//pub use self::matrix::{Matrix, StateMatrix};
 
-
-use core::convert::Infallible;
-use atsam4_hal::{prelude::*, gpio::*};
-use embedded_time::{duration::*, rate::*};
+//TODO Remove dead code after testing
 /*
 /// Scan structure to handle matrix strobing and sensing
 pub struct Scan {

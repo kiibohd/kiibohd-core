@@ -9,9 +9,10 @@ use core::convert::Infallible;
 use atsam4_hal::{prelude::*, gpio::*, InputPin, OutputPin};
 use embedded_time::{duration::*, rate::*};
 use heapless::Vec;
-use keyberon::matrix::{HeterogenousArray};
+use keyberon::matrix::{HeterogenousArray, PressedKeys};
 use generic_array::{ArrayLength, GenericArray};
 
+//TODO Remove dead code after testing
 /*
 pub struct RowArray { // An array of the input pin's for each row, and a count of how full the array is
     pub rows: [&'static dyn Input<PullDown>; 6],
@@ -52,7 +53,7 @@ impl<C, R> Matrix<C, R> {
     where
         for<'a> &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
     {
-        let state_matrix = StateMatrix::new(5_u32.milliseconds(), 500_u32.milliseconds(), 700_u32.milliseconds(), scan_period);
+        let state_matrix = StateMatrix::new(5_u32.milliseconds(), 500_u32.milliseconds(), 700_u32.milliseconds(), scan_period); // (debounce-duration, held-duration, idle-duration, scan-period)
         let mut res = Self { cols, rows, state_matrix };
         res.clear()?;
         Ok(res)
@@ -79,7 +80,16 @@ impl<C, R> Matrix<C, R> {
     {
         let rows = &self.rows;
         let state_matrix = &mut self.state_matrix;
-        let _stuff = self.cols
+        for (i, c) in self.cols.into_iter().enumerate() {
+            c.set_high()?;
+            for (j, r) in rows.into_iter().enumerate() {
+                state_matrix.poll_update(j, i, r.is_high()?);
+            }
+            c.set_low()?;
+        }
+
+        //TODO Remove dead code after testing
+        /*let _stuff = self.cols
             .into_iter()
             .enumerate()
             .map(|(i, c)| {
@@ -100,7 +110,7 @@ impl<C, R> Matrix<C, R> {
                     Ok(_) => {}
                     Err(_e) => {}
                 }
-            });
+            });*/
         Ok(())
     }
 }
@@ -118,103 +128,22 @@ impl StateMatrix {
         }
     }
 
+    // Update the individual KeyStates in the array\
+    //TODO Do something with the returned StateReturn
     pub fn poll_update(&mut self, r: usize, c: usize, high: bool) -> bool {
         let _change = KeyState::poll_update(&mut self.keys[r][c], high);
         false
     }
 
-    /*pub fn events<'a, U>(&'a mut self, new: T) -> impl Iterator<Item = Event> + 'a
-    where
-        &'a T: IntoIterator<Item = U>,
-        U: IntoIterator<Item = &'a bool>,
-        U::IntoIter: 'a,
-    {
-
-
-
-        if self.poll_update()
-
-        if self.update(new) {
-            Left(
-                self.new
-                    .into_iter()
-                    .zip(self.cur.into_iter())
-                    .enumerate()
-                    .flat_map(move |(i, (o, n))| {
-                        o.into_iter().zip(n.into_iter()).enumerate().filter_map(
-                            move |(j, bools)| match bools {
-                                (false, true) => {
-                                    Some(Event::Press(i.try_into().unwrap(), j.try_into().unwrap()))
-                                }
-                                (true, false) => Some(Event::Release(
-                                    i.try_into().unwrap(),
-                                    j.try_into().unwrap(),
-                                )),
-                                _ => None,
-                            },
-                        )
-                    }),
-            )
-        } else {
-            Right(core::iter::empty())
-        }*/
-
+    // Get the individual state of a specific key
     pub fn get_state(&self, r: usize, c: usize) -> State {
         KeyState::get_state(&self.keys[r][c])
     }
 
 }
 
+//TODO Remove dead code after testing
 /*
-impl<C, R> Matrix<C, R> {
-    pub fn new<E>(cols: C, rows: R) -> Result<Self, E>
-    where
-        for<'a> &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
-    {
-        let mut res = Self { cols, rows };
-        res.clear()?;
-        Ok(res)
-    }
-    pub fn clear<'a, E: 'a>(&'a mut self) -> Result<(), E>
-    where
-        &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
-    {
-        for c in self.cols.into_iter() {
-            c.set_high()?;
-        }
-        Ok(())
-    }
-    pub fn get<'a, E: 'a>(&'a mut self) -> Result<PressedKeys<R::Len, C::Len>, E>
-    where
-        &'a mut R: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
-        R: HeterogenousArray,
-        R::Len: ArrayLength<GenericArray<bool, C::Len>>,
-        R::Len: heapless::ArrayLength<GenericArray<bool, C::Len>>,
-        &'a C: IntoIterator<Item = &'a dyn InputPin<Error = E>>,
-        C: HeterogenousArray,
-        C::Len: ArrayLength<bool>,
-        C::Len: heapless::ArrayLength<bool>,
-    {
-        let cols = &self.cols;
-        self.rows
-            .into_iter()
-            .map(|r| {
-                r.set_low()?;
-                let col = cols
-                    .into_iter()
-                    .map(|c| c.is_low())
-                    .collect::<Result<Vec<_, C::Len>, E>>()?
-                    .into_iter()
-                    .collect();
-                r.set_high()?;
-                Ok(col)
-            })
-            .collect::<Result<Vec<_, R::Len>, E>>()
-            .map(|res| PressedKeys(res.into_iter().collect()))
-    }
-}*/
-
-
 #[derive(Default, PartialEq, Eq)]
 pub struct PressedKeys<U, V>(pub GenericArray<GenericArray<bool, V>, U>)
 where
@@ -246,4 +175,4 @@ where
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
     }
-}
+}*/
