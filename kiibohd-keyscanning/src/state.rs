@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander, Zion Koyl
+// Copyright 2021 Zion Koyl
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -42,10 +42,10 @@ pub struct KeyState {
 
 impl KeyState {
     pub fn new(
-        bounce_limit: Milliseconds,
-        held_limit: Milliseconds,
-        idle_limit: Milliseconds,
-        scan_period: Microseconds,
+        bounce_lim: Milliseconds,
+        held_lim: Milliseconds,
+        idle_lim: Milliseconds,
+        scan_pd: Microseconds,
     ) -> KeyState {
         KeyState {
             state: State::Released,             // Current key state
@@ -54,11 +54,11 @@ impl KeyState {
             bouncing_dur: 0_u32.milliseconds(), // Duration(ms) the key has been debouncing
             released_dur: 0_u32.milliseconds(), // Duration(ms) the key has been released
             held_dur: 0_u32.milliseconds(),    // Duration(ms) the key has been held
-            bounce_limit: bounce_limit, // Duration(ms) that the key has to be high to be considered debounced
+            bounce_limit: bounce_lim, // Duration(ms) that the key has to be high to be considered debounced
             idle_time: 0_u32.milliseconds(), // Duration(ms) the key has been idle
-            scan_period: scan_period,   // the period of time(microseconds) that the scan takes
-            held_limit: held_limit, // Duration(ms) that the key needs to be pressed to be considered held
-            idle_limit: idle_limit, // Duration(ms) that the key needs to be released to be considered idle
+            scan_period: scan_pd,     // the period of time(microseconds) that the scan takes
+            held_limit: held_lim, // Duration(ms) that the key needs to be pressed to be considered held
+            idle_limit: idle_lim, // Duration(ms) that the key needs to be released to be considered idle
         }
     }
 
@@ -71,7 +71,7 @@ impl KeyState {
     pub fn poll_update(&mut self, high: bool) -> StateReturn {
         let zero: Milliseconds = 0_u32.milliseconds();
         let scan_period: Milliseconds = self.scan_period.into();
-        let mut state_change: bool = false;
+        let mut state_chng: bool = false;
         self.prev_state = self.state;
         if high == false {
             // if the GPIO reads the input pin low
@@ -80,13 +80,13 @@ impl KeyState {
                     // if the previous state was pressed and the input is read as low
                     self.state = State::Released;
                     self.pressed_dur = zero;
-                    state_change = true;
+                    state_chng = true;
                 }
                 State::Bouncing => {
                     // the previous state was bouncing and the output was read as low
                     self.state = State::Released;
                     self.bouncing_dur = zero;
-                    state_change = true;
+                    state_chng = true;
                 }
                 State::Released => {
                     // if the previous state was released and the input is still low
@@ -94,7 +94,7 @@ impl KeyState {
                         // The key was Released and is now considered idle
                         self.state = State::Idle;
                         self.released_dur = zero;
-                        state_change = true;
+                        state_chng = true;
                     } else {
                         // The key was released, but is not yet idle
                         self.state = State::Released;
@@ -109,7 +109,7 @@ impl KeyState {
                 State::Held => {
                     self.state = State::Released;
                     self.held_dur = zero;
-                    state_change = true;
+                    state_chng = true;
                 }
             }
         } else if high == true {
@@ -119,7 +119,7 @@ impl KeyState {
                     if self.pressed_dur >= self.held_limit {
                         // if the key was pressed
                         self.state = State::Held;
-                        state_change = true;
+                        state_chng = true;
                     } else {
                         self.state = State::Pressed;
                         self.pressed_dur = self.pressed_dur + scan_period;
@@ -130,7 +130,7 @@ impl KeyState {
                         // The key has been pressed longer than the debounce limit and is officialyl pressed
                         self.state = State::Pressed;
                         self.bouncing_dur = zero;
-                        state_change = true;
+                        state_chng = true;
                     } else {
                         // The key is still in the debounce phase
                         self.state = State::Bouncing;
@@ -141,13 +141,13 @@ impl KeyState {
                     // The key was released, but now the GPIO reads high
                     self.state = State::Bouncing;
                     self.released_dur = zero;
-                    state_change = true;
+                    state_chng = true;
                 }
                 State::Idle => {
                     // The key was idle, but is now bouncing
                     self.state = State::Bouncing;
                     self.idle_time = zero;
-                    state_change = true;
+                    state_chng = true;
                 }
                 State::Held => {
                     // The key was held, and is still held
@@ -158,7 +158,7 @@ impl KeyState {
         }
 
         return StateReturn {
-            state_change: state_change,
+            state_change: state_chng,
             ending_state: self.state,
         };
     }

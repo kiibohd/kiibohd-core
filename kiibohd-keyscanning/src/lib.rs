@@ -14,12 +14,10 @@
 /// The maximum number of rows is 7, and the maximum number of columns is 20. This number may need adjusted through testing.
 pub mod state;
 pub use self::state::{KeyState, State, StateReturn};
-// use atsam4_hal::{gpio::*, prelude::*, InputPin, OutputPin};
-use core::convert::Infallible;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
-use embedded_time::{duration::*, rate::*};
+use embedded_time::duration::*;
 use generic_array::{ArrayLength, GenericArray};
-use keyberon::matrix::{HeterogenousArray, PressedKeys};
+use keyberon::matrix::HeterogenousArray;
 
 pub struct Matrix<C, R> {
     // The matrix of inputs, and outputs, and the state of each key
@@ -58,6 +56,12 @@ impl<C, R> Matrix<C, R> {
         Ok(())
     }
 
+    /// This is the main matrix scanning function.
+    /// The function iterates over the array of columns, sets them high, then iterates over the
+    /// array of rows and reads their state.
+    /// For each key that's state has changed since last scan the "callback" function is executed.
+    /// The idea for the callback is that you can use your own handling of state changes
+    /// independent of the scanning module.
     pub fn get<'a, E: 'a>(&'a mut self, callback: fn(StateReturn, usize, bool)) -> Result<(), E>
     where
         &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,

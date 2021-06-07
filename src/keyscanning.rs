@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021 Zion Koyl
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -6,8 +6,5 @@
 // copied, modified, or distributed except according to those terms.
 
 // ----- Crates -----
-
-// This forces rust to import all the symbols from kiibohd-hid-io
-// and include them into libkiibohd_core.a
 #[allow(unused_imports)]
 pub use kiibohd_keyscanning::*;
