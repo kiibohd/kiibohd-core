@@ -1,0 +1,22 @@
+[package]
+name = "kiibohd-log"
+version = "0.1.0"
+authors = ["Jacob Alexander <haata@kiibohd.com>"]
+edition = "2018"
+description = "Basic log wrapper for the kiibohd project. Supports multiple backends (e.g. rtt, semi-hosting)."
+keywords = ["log", "rtt", "semihosting", "embedded"]
+categories = ["embedded", "hardware-support", "no-std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kiibohd/kiibohd-core"
+
+[dependencies]
+cortex-m = { version = "0.7.1" }
+cortex-m-semihosting = { version = "0.3", optional = true }
+log = { version = "0.4", no_default_features = true }
+rtt-target = { version = "0.3.1", no_default_features = true, optional = true }
+
+[features]
+rtt = ["rtt-target/cortex-m"]
+semihosting = ["cortex-m-semihosting"]
+# TODO (HaaTa) Fix itm support
+#itm = ["cortex-m"]

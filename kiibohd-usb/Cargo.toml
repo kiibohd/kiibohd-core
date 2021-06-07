@@ -1,0 +1,15 @@
+[package]
+name = "kiibohd-usb"
+version = "0.1.0"
+authors = ["Jacob Alexander <haata@kiibohd.com>"]
+edition = "2018"
+description = "Kiibohd USB HID Interface"
+keywords = ["usb", "hid", "embedded", "nkro"]
+categories = ["embedded", "hardware-support", "no-std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kiibohd/kiibohd-core"
+
+[dependencies]
+log = { version = "0.4", no_default_features = true }
+usbd-hid = { git = "https://github.com/haata/usbd-hid.git" }
+#usbd-hid = "0.5.0"

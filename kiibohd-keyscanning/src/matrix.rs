@@ -1,48 +1,24 @@
-#[allow(unused_imports)]
+// Copyright 2021 Zion Koyl
+//
+// Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+// http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
+// http://opensource.org/licenses/MIT>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
 
+#[allow(unused_imports)]
 pub mod state;
 pub use self::state::KeyState;
 pub use self::state::State;
 pub use self::state::StateReturn;
-
+// use atsam4_hal::{gpio::*, prelude::*, InputPin, OutputPin};
 use core::convert::Infallible;
-use atsam4_hal::{prelude::*, gpio::*, InputPin, OutputPin};
+use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_time::{duration::*, rate::*};
-use heapless::Vec;
-use keyberon::matrix::{HeterogenousArray, PressedKeys};
 use generic_array::{ArrayLength, GenericArray};
+use keyberon::matrix::{HeterogenousArray, PressedKeys};
 
-//TODO Remove dead code after testing
-/*
-pub struct RowArray { // An array of the input pin's for each row, and a count of how full the array is
-    pub rows: [&'static dyn Input<PullDown>; 6],
-    pub rowcnt: usize,
-}
-
-impl RowArray {
-    pub fn new(rows: [&'static dyn Input<PullDown>; 6], rowcnt: usize) -> RowArray {
-        RowArray {
-            rows: rows,
-            rowcnt: rowcnt,
-        }
-    }
-}
-
-pub struct ColArray { // An array of the output pin's for each column, and a count of how full the array is
-    pub cols: [&'static mut dyn Output<PushPull>; 17],
-    pub colcnt: usize,
-}
-
-impl ColArray {
-    pub fn new(cols: [&'static mut dyn Output<PushPull>; 17], colcnt: usize) -> ColArray{
-        ColArray {
-            cols: cols,
-            colcnt: colcnt,
-        }
-    }
-}*/
-
-pub struct Matrix<C, R> { // The matrix of inputs, and outputs, and the state of each key
+pub struct Matrix<C, R> {
+    // The matrix of inputs, and outputs, and the state of each key
     pub rows: R,
     pub cols: C,
     pub state_matrix: StateMatrix,
@@ -53,21 +29,32 @@ impl<C, R> Matrix<C, R> {
     where
         for<'a> &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
     {
-        let state_matrix = StateMatrix::new(5_u32.milliseconds(), 500_u32.milliseconds(), 700_u32.milliseconds(), scan_period); // (debounce-duration, held-duration, idle-duration, scan-period)
-        let mut res = Self { cols, rows, state_matrix };
+        let state_matrix = StateMatrix::new(
+            5_u32.milliseconds(),
+            500_u32.milliseconds(),
+            700_u32.milliseconds(),
+            scan_period,
+        ); // (debounce-duration, held-duration, idle-duration, scan-period)
+        let mut res = Self {
+            cols,
+            rows,
+            state_matrix,
+        };
         res.clear()?;
         Ok(res)
     }
+
     pub fn clear<'a, E: 'a>(&'a mut self) -> Result<(), E>
     where
         &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
     {
         for c in self.cols.into_iter() {
-            c.set_low()?;
+            c.set_low().ok().unwrap();
         }
         Ok(())
     }
-    pub fn get<'a, E: 'a>(&'a mut self) -> Result<(), E>
+
+    pub fn get<'a, E: 'a>(&'a mut self, callback: fn(StateReturn, usize, bool)) -> Result<(), E>
     where
         &'a mut C: IntoIterator<Item = &'a mut dyn OutputPin<Error = E>>,
         C: HeterogenousArray,
@@ -81,36 +68,15 @@ impl<C, R> Matrix<C, R> {
         let rows = &self.rows;
         let state_matrix = &mut self.state_matrix;
         for (i, c) in self.cols.into_iter().enumerate() {
-            c.set_high()?;
+            c.set_high().ok().unwrap();
             for (j, r) in rows.into_iter().enumerate() {
-                state_matrix.poll_update(j, i, r.is_high()?);
+                let high = r.is_high().ok().unwrap();
+                let state: StateReturn = state_matrix.poll_update(j, i, high);
+                callback(state, state_matrix.get_scancode(j, i), high);
             }
-            c.set_low()?;
+            c.set_low().ok().unwrap();
         }
 
-        //TODO Remove dead code after testing
-        /*let _stuff = self.cols
-            .into_iter()
-            .enumerate()
-            .map(|(i, c)| {
-                match c.set_high() {
-                    Ok(_) => {}
-                    Err(_e) => {}
-                }
-                rows
-                    .into_iter()
-                    .enumerate()
-                    .map(|(j, r)| {
-                        match r.is_high() {
-                            Ok(t) => {state_matrix.poll_update(j, i, t);}
-                            Err(_e) => {}
-                        }
-                    });
-                match c.set_low() {
-                    Ok(_) => {}
-                    Err(_e) => {}
-                }
-            });*/
         Ok(())
     }
 }
@@ -121,18 +87,22 @@ pub struct StateMatrix {
 }
 
 impl StateMatrix {
-
-    pub fn new(bounce_limit: Milliseconds, held_limit: Milliseconds, idle_limit: Milliseconds, scan_period: Microseconds) -> StateMatrix {
-        StateMatrix { // Create a two dimensional array of key states with a debounce delay of 5ms, a hold time of 5ms, and an idle limit of 500ms
+    pub fn new(
+        bounce_limit: Milliseconds,
+        held_limit: Milliseconds,
+        idle_limit: Milliseconds,
+        scan_period: Microseconds,
+    ) -> StateMatrix {
+        StateMatrix {
+            // Create a two dimensional array of key states with a debounce delay of 5ms, a hold time of 5ms, and an idle limit of 500ms
             keys: [[KeyState::new(bounce_limit, held_limit, idle_limit, scan_period); 7]; 20],
         }
     }
 
     // Update the individual KeyStates in the array\
     //TODO Do something with the returned StateReturn
-    pub fn poll_update(&mut self, r: usize, c: usize, high: bool) -> bool {
-        let _change = KeyState::poll_update(&mut self.keys[r][c], high);
-        false
+    pub fn poll_update(&mut self, r: usize, c: usize, high: bool) -> StateReturn {
+        KeyState::poll_update(&mut self.keys[r][c], high)
     }
 
     // Get the individual state of a specific key
@@ -140,6 +110,9 @@ impl StateMatrix {
         KeyState::get_state(&self.keys[r][c])
     }
 
+    pub fn get_scancode(&self, r: usize, c: usize) -> usize {
+        c + (19 * r)
+    }
 }
 
 //TODO Remove dead code after testing
