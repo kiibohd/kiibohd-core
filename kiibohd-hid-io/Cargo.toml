@@ -13,7 +13,6 @@ edition = "2018"
 [dependencies]
 c_utf8          = { version = "^0.1", default-features = false }
 cstr_core       = { version = "^0.2", default-features = false }
-heapless        = { version = "^0.6" }
+heapless        = { version = "^0.7" }
 hid-io-protocol = { git = "https://github.com/hid-io/hid-io-core", default-features = false, features = ["device"] }
 pkg-version     = { version = "^1.0" }
-typenum         = { version = "^1.12", features = ["no_std"] }

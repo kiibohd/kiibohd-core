@@ -14,9 +14,8 @@ mod test;
 
 // ----- Crates -----
 
-use heapless::{ArrayLength, Vec};
+use heapless::Vec;
 use log::trace;
-use typenum::Unsigned;
 
 // TODO Use features to determine which lookup table to use
 use rawlookup::MODEL;
@@ -133,22 +132,22 @@ impl RawData {
     /// SC: specifies the number of scratch samples until ready to average
     ///     Should be a power of two (1, 2, 4, 8, 16...) for the compiler to
     ///     optimize.
-    fn add<SC: Unsigned>(&mut self, reading: u16) -> Option<u16> {
+    fn add<const SC: usize>(&mut self, reading: u16) -> Option<u16> {
         self.scratch += reading as u32;
         self.scratch_samples += 1;
         trace!(
             "Reading: {}  Sample: {}/{}",
             reading,
             self.scratch_samples,
-            <SC>::to_u8()
+            SC as u8
         );
 
-        if self.scratch_samples == <SC>::U8 {
+        if self.scratch_samples == SC as u8 {
             let val = if self.prev_scratch == 0 {
-                self.scratch / <SC>::U32
+                self.scratch / SC as u32
             } else {
                 // Average previous value if non-zero
-                (self.scratch + self.prev_scratch) / <SC>::U32 / <SC>::U32
+                (self.scratch + self.prev_scratch) / SC as u32 / SC as u32
             };
             self.prev_scratch = self.scratch;
             self.scratch = 0;
@@ -258,7 +257,10 @@ impl SenseData {
     /// Analysis does a few more addition, subtraction and comparisions
     /// so it's a more expensive operation.
     /// Normal mode
-    fn add<SC: Unsigned>(&mut self, reading: u16) -> Result<Option<&SenseAnalysis>, SensorError> {
+    fn add<const SC: usize>(
+        &mut self,
+        reading: u16,
+    ) -> Result<Option<&SenseAnalysis>, SensorError> {
         // Add value to accumulator
         if let Some(data) = self.data.add::<SC>(reading) {
             // Check min/max values
@@ -274,7 +276,7 @@ impl SenseData {
             self.cal = CalibrationStatus::MagnetDetected;
 
             // Calculate new analysis (requires previous results + min/max)
-            self.analysis = SenseAnalysis::new(data, &self);
+            self.analysis = SenseAnalysis::new(data, self);
             Ok(Some(&self.analysis))
         } else {
             Ok(None)
@@ -286,7 +288,7 @@ impl SenseData {
     /// Analysis does a few more addition, subtraction and comparisions
     /// so it's a more expensive operation.
     /// Test mode
-    fn add_test<SC: Unsigned, MNOK: Unsigned, MXOK: Unsigned, NS: Unsigned>(
+    fn add_test<const SC: usize, const MNOK: usize, const MXOK: usize, const NS: usize>(
         &mut self,
         reading: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
@@ -324,7 +326,7 @@ impl SenseData {
             }
 
             // Calculate new analysis (requires previous results + min/max)
-            self.analysis = SenseAnalysis::new(data, &self);
+            self.analysis = SenseAnalysis::new(data, self);
             Ok(Some(&self.analysis))
         } else {
             Ok(None)
@@ -338,21 +340,21 @@ impl SenseData {
     /// limits. Wherease calibrated sensors run at higher gain (and likely an offset) to maximize
     /// the voltage range of the desired sensor range.
     /// NOTE: This implementation (currently) only works for a single magnet pole of a bipolar sensor.
-    fn check_calibration<MNOK: Unsigned, MXOK: Unsigned, NS: Unsigned>(
+    fn check_calibration<const MNOK: usize, const MXOK: usize, const NS: usize>(
         &self,
         data: u16,
     ) -> CalibrationStatus {
         // Value too high, likely a bad sensor or bad soldering on the pcb
         // Magnet may also be too strong.
-        if data > <MXOK>::U16 {
+        if data > MXOK as u16 {
             return CalibrationStatus::SensorBroken;
         }
         // No sensor detected
-        if data < <NS>::U16 {
+        if data < NS as u16 {
             return CalibrationStatus::SensorMissing;
         }
         // Wrong pole (or magnet may be too weak)
-        if data < <MNOK>::U16 {
+        if data < MNOK as u16 {
             return CalibrationStatus::MagnetWrongPoleOrMissing;
         }
 
@@ -368,24 +370,24 @@ impl Default for SenseData {
 
 // ----- Hall Effect Interface ------
 
-pub struct Sensors<S: ArrayLength<SenseData>> {
+pub struct Sensors<const S: usize> {
     sensors: Vec<SenseData, S>,
 }
 
-impl<S: ArrayLength<SenseData>> Sensors<S> {
+impl<const S: usize> Sensors<S> {
     /// Initializes full Sensor array
     /// Only fails if static allocation fails (very unlikely)
     pub fn new() -> Result<Sensors<S>, SensorError> {
         let mut sensors = Vec::new();
-        if sensors.resize_default(<S>::to_usize()).is_err() {
-            Err(SensorError::FailedToResize(<S>::to_usize()))
+        if sensors.resize_default(S).is_err() {
+            Err(SensorError::FailedToResize(S))
         } else {
             Ok(Sensors { sensors })
         }
     }
 
     /// Add sense data for a specific sensor
-    pub fn add<SC: Unsigned>(
+    pub fn add<const SC: usize>(
         &mut self,
         index: usize,
         reading: u16,
@@ -400,7 +402,7 @@ impl<S: ArrayLength<SenseData>> Sensors<S> {
 
     /// Add sense data for a specific sensor
     /// Test mode
-    pub fn add_test<SC: Unsigned, MNOK: Unsigned, MXOK: Unsigned, NS: Unsigned>(
+    pub fn add_test<const SC: usize, const MNOK: usize, const MXOK: usize, const NS: usize>(
         &mut self,
         index: usize,
         reading: u16,

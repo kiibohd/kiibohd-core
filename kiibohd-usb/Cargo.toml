@@ -10,6 +10,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/kiibohd/kiibohd-core"
 
 [dependencies]
-log = { version = "0.4", no_default_features = true }
+heapless = { version = "0.7" }
+log = { version = "0.4", default-features = false }
 usbd-hid = { git = "https://github.com/haata/usbd-hid.git" }
 #usbd-hid = "0.5.0"
+
+[dev-dependencies]
+libc-print = "0.1.16"

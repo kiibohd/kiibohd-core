@@ -9,55 +9,33 @@
 
 // ----- Crates -----
 
-use heapless::consts::{U1000, U115, U2};
-use typenum::{UInt, UTerm, B0, B1};
-
 pub use kiibohd_hall_effect::{
     CalibrationStatus, SenseAnalysis, SenseData, SenseStats, SensorError, Sensors,
 };
 
 // ----- Types -----
 
-type NumScanCodes = U115;
-type SenseAccumulation = U2;
+const NUM_SCAN_CODES: usize = 115;
+const SENSE_ACCUMULATION: usize = 2;
 
 // --- NOTE ---
 // These thresholds were calculated on a Keystone v1.00 TKL pcb
 
 // Calibration Mode Thresholds
-type MinOkThreshold = UInt<
-    UInt<
-        UInt<
-            UInt<UInt<UInt<UInt<UInt<UInt<UInt<UInt<UTerm, B1>, B0>, B1>, B0>, B1>, B0>, B0>, B0>,
-            B1,
-        >,
-        B1,
-    >,
-    B0,
->; // U1350 - b10101000110 - Switch not pressed (not 100% guaranteed, but the minimum range we can work withA
-   // Some sensors will have default values up to 1470 without any magnet and that is within the specs
-   // of the datasheet.
-type MaxOkThreshold = UInt<
-    UInt<
-        UInt<
-            UInt<
-                UInt<
-                    UInt<UInt<UInt<UInt<UInt<UInt<UInt<UTerm, B1>, B0>, B0>, B1>, B1>, B1>, B0>,
-                    B0,
-                >,
-                B0,
-            >,
-            B1,
-        >,
-        B0,
-    >,
-    B0,
->; // U2500 - b100111000100 - Switch fully pressed
-type NoSensorThreshold = U1000; // Likely invalid ADC level from non-existent sensor (or very low magnet)
+const MIN_OK_THRESHOLD: usize = 1350;
+// U1350 - b10101000110 - Switch not pressed (not 100% guaranteed, but the minimum range we can work withA
+// Some sensors will have default values up to 1470 without any magnet and that is within the specs
+// of the datasheet.
+
+const MAX_OK_THRESHOLD: usize = 2500;
+// U2500 - b100111000100 - Switch fully pressed
+
+const NO_SENSOR_THRESHOLD: usize = 1000;
+// Likely invalid ADC level from non-existent sensor (or very low magnet)
 
 // ----- Globals -----
 
-static mut INTF: Option<Sensors<NumScanCodes>> = None;
+static mut INTF: Option<Sensors<NUM_SCAN_CODES>> = None;
 
 // ----- External C Callbacks -----
 
@@ -85,7 +63,7 @@ pub enum HeStatus {
 #[no_mangle]
 pub extern "C" fn he_init() -> HeStatus {
     unsafe {
-        INTF = Some(match Sensors::<NumScanCodes>::new() {
+        INTF = Some(match Sensors::<NUM_SCAN_CODES>::new() {
             Ok(intf) => intf,
             Err(_) => {
                 return HeStatus::ErrorUnknown;
@@ -115,7 +93,7 @@ pub unsafe extern "C" fn he_scan_event(
         }
     };
 
-    match intf.add::<SenseAccumulation>(index as usize, val) {
+    match intf.add::<SENSE_ACCUMULATION>(index as usize, val) {
         Ok(data) => {
             if let Some(data) = data {
                 *analysis = data.clone();
@@ -155,10 +133,11 @@ pub unsafe extern "C" fn he_test_event(
         }
     };
 
-    match intf.add_test::<SenseAccumulation, MinOkThreshold, MaxOkThreshold, NoSensorThreshold>(
-        index as usize,
-        val,
-    ) {
+    match intf
+        .add_test::<SENSE_ACCUMULATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            index as usize,
+            val,
+        ) {
         Ok(data) => {
             if let Some(data) = data {
                 *analysis = data.clone();

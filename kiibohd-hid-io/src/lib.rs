@@ -17,26 +17,24 @@ use core::fmt::Write;
 use core::ptr::copy_nonoverlapping;
 use cstr_core::c_char;
 use cstr_core::CStr;
-use heapless::consts::{U10, U256, U277, U4, U64, U8};
-use heapless::{ArrayLength, String, Vec};
+use heapless::{String, Vec};
 use hid_io_protocol::commands::*;
 use hid_io_protocol::*;
 use pkg_version::*;
-use typenum::Unsigned;
 
 // ----- Types -----
 
-type BufChunk = U64;
-type IdLen = U10;
-type MessageLen = U256;
-type RxBuf = U8;
-type SerializationLen = U277;
-type TxBuf = U8;
+const BUF_CHUNK: usize = 64;
+const ID_LEN: usize = 10;
+const MESSAGE_LEN: usize = 256;
+const RX_BUF: usize = 8;
+const SERIALIZATION_LEN: usize = 277;
+const TX_BUF: usize = 8;
 
 // ----- Globals -----
 
 static mut INTF: Option<
-    CommandInterface<TxBuf, RxBuf, BufChunk, MessageLen, SerializationLen, IdLen>,
+    CommandInterface<TX_BUF, RX_BUF, BUF_CHUNK, MESSAGE_LEN, SERIALIZATION_LEN, ID_LEN>,
 > = None;
 
 // ----- External C Callbacks -----
@@ -183,19 +181,19 @@ pub struct HidioHostInfo {
 /// This is the transmission length of the serialized packet
 #[no_mangle]
 pub extern "C" fn hidio_bufchunk_size() -> u16 {
-    <BufChunk as Unsigned>::to_u16()
+    BUF_CHUNK as u16
 }
 
 /// Size of hid-io rx buffer (in multiples of hidio_bufchunk_size())
 #[no_mangle]
 pub extern "C" fn hidio_rxbyte_bufsize() -> u16 {
-    <RxBuf as Unsigned>::to_u16()
+    RX_BUF as u16
 }
 
 /// Size of hid-io tx buffer (in multiples of hidio_bufchunk_size())
 #[no_mangle]
 pub extern "C" fn hidio_txbyte_bufsize() -> u16 {
-    <TxBuf as Unsigned>::to_u16()
+    TX_BUF as u16
 }
 
 /// Initialized the hid-io CommandInterface
@@ -212,15 +210,25 @@ pub extern "C" fn hidio_init(config: HidioConfig) -> HidioStatus {
     ];
 
     unsafe {
-        INTF = Some(match CommandInterface::<TxBuf, RxBuf, BufChunk, MessageLen, SerializationLen, IdLen>::new(&ids, config) {
-            Ok(intf) => intf,
-            Err(CommandError::IdVecTooSmall) => {
-                return HidioStatus::ErrorIdVecTooSmall;
-            }
-            Err(_) => {
-                return HidioStatus::ErrorUnknown;
-            }
-        });
+        INTF = Some(
+            match CommandInterface::<
+                TX_BUF,
+                RX_BUF,
+                BUF_CHUNK,
+                MESSAGE_LEN,
+                SERIALIZATION_LEN,
+                ID_LEN,
+            >::new(&ids, config)
+            {
+                Ok(intf) => intf,
+                Err(CommandError::IdVecTooSmall) => {
+                    return HidioStatus::ErrorIdVecTooSmall;
+                }
+                Err(_) => {
+                    return HidioStatus::ErrorUnknown;
+                }
+            },
+        );
     }
     HidioStatus::Success
 }
@@ -246,7 +254,7 @@ pub unsafe extern "C" fn hidio_rx_byte_buffer_full() -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn hidio_rx_bytes(bytes: *const u8, len: u16) -> HidioStatus {
     // Make sure the incoming buffer is a valid size
-    if len > <BufChunk as Unsigned>::to_u16() {
+    if len > BUF_CHUNK as u16 {
         return HidioStatus::ErrorBufSizeTooLarge;
     }
 
@@ -281,10 +289,10 @@ pub unsafe extern "C" fn hidio_rx_bytes(bytes: *const u8, len: u16) -> HidioStat
 #[no_mangle]
 pub unsafe extern "C" fn hidio_tx_bytes(bytes: *mut u8, len: u16) -> HidioStatus {
     // Make sure the buffer is the correct size
-    if len > <BufChunk as Unsigned>::to_u16() {
+    if len > BUF_CHUNK as u16 {
         return HidioStatus::ErrorBufSizeTooLarge;
     }
-    if len < <BufChunk as Unsigned>::to_u16() {
+    if len < BUF_CHUNK as u16 {
         return HidioStatus::ErrorBufSizeTooSmall;
     }
 
@@ -653,17 +661,13 @@ pub unsafe extern "C" fn hidio_h0051_manufacturingres(
 // ----- Command Interface -----
 
 struct CommandInterface<
-    TX: ArrayLength<Vec<u8, N>>,
-    RX: ArrayLength<Vec<u8, N>>,
-    N: ArrayLength<u8>,
-    H: ArrayLength<u8>,
-    S: ArrayLength<u8>,
-    ID: ArrayLength<HidIoCommandId> + ArrayLength<u8>,
-> where
-    H: core::fmt::Debug,
-    H: Sub<B1>,
-    H: Sub<U4>,
-{
+    const TX: usize,
+    const RX: usize,
+    const N: usize,
+    const H: usize,
+    const S: usize,
+    const ID: usize,
+> {
     ids: Vec<HidIoCommandId, ID>,
     rx_bytebuf: buffer::Buffer<RX, N>,
     rx_packetbuf: HidIoPacketBuffer<H>,
@@ -671,24 +675,20 @@ struct CommandInterface<
     serial_buf: Vec<u8, S>,
     config: HidioConfig,
     hostinfo: HidioHostInfo,
-    error_str: String<U256>,
+    error_str: String<256>,
     os_version: String<H>,
     host_software_name: String<H>,
     term_out_buffer: String<H>,
 }
 
 impl<
-        TX: ArrayLength<Vec<u8, N>>,
-        RX: ArrayLength<Vec<u8, N>>,
-        N: ArrayLength<u8>,
-        H: ArrayLength<u8>,
-        S: ArrayLength<u8>,
-        ID: ArrayLength<HidIoCommandId> + ArrayLength<u8>,
+        const TX: usize,
+        const RX: usize,
+        const N: usize,
+        const H: usize,
+        const S: usize,
+        const ID: usize,
     > CommandInterface<TX, RX, N, H, S, ID>
-where
-    H: core::fmt::Debug,
-    H: Sub<B1>,
-    H: Sub<U4>,
 {
     fn new(
         ids: &[HidIoCommandId],
@@ -771,11 +771,7 @@ where
     /// Process rx buffer until empty
     /// Handles flushing tx->rx, decoding, then processing buffers
     /// Returns the number of buffers processed
-    pub fn process_rx(&mut self, count: u8) -> Result<u8, CommandError>
-    where
-        <H as Sub<B1>>::Output: ArrayLength<u8>,
-        <H as Sub<U4>>::Output: ArrayLength<u8>,
-    {
+    pub fn process_rx(&mut self, count: u8) -> Result<u8, CommandError> {
         // Decode bytes into buffer
         let mut cur = 0;
         while (count == 0 || cur < count) && self.rx_packetbuffer_decode()? {
@@ -890,18 +886,17 @@ where
 /// S - Serialization buffer size
 /// ID - Max number of HidIoCommandIds
 impl<
-        TX: ArrayLength<Vec<u8, N>>,
-        RX: ArrayLength<Vec<u8, N>>,
-        N: ArrayLength<u8>,
-        H: ArrayLength<u8>,
-        S: ArrayLength<u8>,
-        ID: ArrayLength<HidIoCommandId> + ArrayLength<u8>,
-    > Commands<H, ID> for CommandInterface<TX, RX, N, H, S, ID>
-where
-    H: core::fmt::Debug + Sub<B1> + Sub<U4>,
+        const TX: usize,
+        const RX: usize,
+        const N: usize,
+        const H: usize,
+        const S: usize,
+        const ID: usize,
+    > Commands<H, { MESSAGE_LEN - 1 }, { MESSAGE_LEN - 4 }, ID>
+    for CommandInterface<TX, RX, N, H, S, ID>
 {
     fn default_packet_chunk(&self) -> u32 {
-        <N as Unsigned>::to_u32()
+        N as u32
     }
 
     fn tx_packetbuffer_send(&mut self, buf: &mut HidIoPacketBuffer<H>) -> Result<(), CommandError> {
@@ -920,8 +915,8 @@ where
         // May need to enqueue multiple packets depending how much
         // was serialized
         let data = &self.serial_buf;
-        for pos in (1..data.len()).step_by(<N as Unsigned>::to_usize()) {
-            let len = core::cmp::min(<N as Unsigned>::to_usize(), data.len() - pos);
+        for pos in (1..data.len()).step_by(N) {
+            let len = core::cmp::min(N, data.len() - pos);
             match self
                 .tx_bytebuf
                 .enqueue(match Vec::from_slice(&data[pos..len + pos]) {
@@ -953,10 +948,10 @@ where
     }
 
     /// Uses the CommandInterface to send data directly
-    fn h0001_info_cmd(&mut self, data: h0001::Cmd) -> Result<h0001::Ack<Sub1<H>>, h0001::Nak>
-    where
-        <H as Sub<B1>>::Output: ArrayLength<u8>,
-    {
+    fn h0001_info_cmd(
+        &mut self,
+        data: h0001::Cmd,
+    ) -> Result<h0001::Ack<{ MESSAGE_LEN - 1 }>, h0001::Nak> {
         use h0001::*;
 
         let property = data.property;
@@ -1033,10 +1028,10 @@ where
     }
     /// Uses the CommandInterface to store data rather than issue
     /// a callback
-    fn h0001_info_ack(&mut self, data: h0001::Ack<Sub1<H>>) -> Result<(), CommandError>
-    where
-        <H as Sub<B1>>::Output: ArrayLength<u8>,
-    {
+    fn h0001_info_ack(
+        &mut self,
+        data: h0001::Ack<{ MESSAGE_LEN - 1 }>,
+    ) -> Result<(), CommandError> {
         use h0001::*;
 
         match data.property {

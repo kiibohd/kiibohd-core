@@ -12,8 +12,11 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 [dependencies]
 cortex-m = { version = "0.7.1" }
 cortex-m-semihosting = { version = "0.3", optional = true }
-log = { version = "0.4", no_default_features = true }
-rtt-target = { version = "0.3.1", no_default_features = true, optional = true }
+log = { version = "0.4", default_features = false }
+rtt-target = { version = "0.3.1", default_features = false, optional = true }
+
+[dev-dependencies]
+rtt-target = { version = "0.3.1", default_features = false }
 
 [features]
 rtt = ["rtt-target/cortex-m"]
