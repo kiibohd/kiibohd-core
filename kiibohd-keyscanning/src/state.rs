@@ -68,12 +68,13 @@ impl KeyState {
 
     /// The result of the last scan gets sent here and thie function determines the actual state change of the key.
     /// This function returns (state change, ending state)
-    pub fn poll_update(&mut self, high: bool) -> StateReturn {
+    pub fn poll_update(&mut self, on: bool) -> StateReturn {
         let zero: Milliseconds = 0_u32.milliseconds();
         let scan_period: Milliseconds = self.scan_period.into();
         let mut state_chng: bool = false;
         self.prev_state = self.state;
-        if high == false {
+
+        if !on {
             // if the GPIO reads the input pin low
             match self.prev_state {
                 State::Pressed => {
@@ -112,8 +113,8 @@ impl KeyState {
                     state_chng = true;
                 }
             }
-        } else if high == true {
-            // if the GPIO reads the input pin high
+        } else if on {
+            // if the GPIO reads the input pin on
             match self.prev_state {
                 State::Pressed => {
                     if self.pressed_dur >= self.held_limit {
@@ -157,9 +158,9 @@ impl KeyState {
             }
         }
 
-        return StateReturn {
+        StateReturn {
             state_change: state_chng,
             ending_state: self.state,
-        };
+        }
     }
 }

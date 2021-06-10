@@ -21,8 +21,8 @@ use keyberon::matrix::HeterogenousArray;
 
 pub struct Matrix<C, R> {
     // The matrix of inputs, and outputs, and the state of each key
-    pub rows: R,
     pub cols: C,
+    pub rows: R,
     pub state_matrix: StateMatrix,
 }
 
@@ -78,9 +78,9 @@ impl<C, R> Matrix<C, R> {
         for (i, c) in self.cols.into_iter().enumerate() {
             c.set_high().ok().unwrap();
             for (j, r) in rows.into_iter().enumerate() {
-                let high = r.is_high().ok().unwrap();
-                let state: StateReturn = state_matrix.poll_update(j, i, high);
-                callback(state, state_matrix.get_scancode(j, i), high);
+                let on = r.is_high().ok().unwrap();
+                let state: StateReturn = state_matrix.poll_update(j, i, on);
+                callback(state, state_matrix.get_scancode(j, i), on);
             }
             c.set_low().ok().unwrap();
         }
